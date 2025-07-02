@@ -233,6 +233,13 @@ function App() {
   // User onboarding/profile modal state (null: hidden, "onboard" or "edit": shown)
   const [showProfile, setShowProfile] = useState(null);
 
+  // Helper to fully reset profile modal state
+  function closeProfileModal() {
+    setShowProfile(null);
+    // Reset/clear other states if needed in future.
+    // Optionally clear form states if managed here.
+  }
+
   // After new registration, indicate if onboarding needed (if no profile found automatically show onboarding modal)
   const [requireOnboarding, setRequireOnboarding] = useState(false);
 
@@ -524,6 +531,12 @@ function App() {
               justifyContent: "center",
               zIndex: 999,
             }}
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                closeProfileModal();
+              }
+            }}
           >
             <div
               style={{
@@ -531,17 +544,37 @@ function App() {
                 borderRadius: 18,
                 minWidth: 370,
                 boxShadow: "0 6px 44px rgba(0,0,0,0.22)",
+                position: "relative",
               }}
             >
+              {/* Modal Close (X) Button */}
+              <button
+                onClick={closeProfileModal}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: 14,
+                  background: "none",
+                  border: "none",
+                  fontSize: 24,
+                  color: "#bbb",
+                  cursor: "pointer",
+                  zIndex: 3,
+                  opacity: 0.8,
+                  transition: "color 0.2s"
+                }}
+                aria-label="Close profile"
+                title="Close"
+                tabIndex={0}
+              >×</button>
               <UserProfile
                 user={user}
                 onProfileSaved={() => {
-                  setShowProfile(null);
+                  closeProfileModal();
                   setRequireOnboarding(false);
                 }}
                 onCancel={() => {
-                  if (requireOnboarding) return;
-                  setShowProfile(null);
+                  closeProfileModal();
                 }}
               />
             </div>
