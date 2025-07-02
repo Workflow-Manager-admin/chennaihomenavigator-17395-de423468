@@ -23,12 +23,10 @@ const AMENITIES = [
 ];
 
 function LoginForm() {
-  // Login/register with email and/or phone (Firebase)
+  // Login/register with email and password (Firebase, no phone support here)
   const {
     loginWithEmail,
     registerWithEmail,
-    loginWithPhone,
-    confirmPhoneCode,
     authLoading,
     authError,
   } = useAuth();
@@ -36,12 +34,8 @@ function LoginForm() {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    name: "",
-    phone: ""
+    name: ""
   });
-  const [step, setStep] = useState("form"); // or phone-code
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uiError, setUiError] = useState("");
 
@@ -53,32 +47,16 @@ function LoginForm() {
       if (mode === "login") {
         if (form.email && form.password) {
           await loginWithEmail(form.email, form.password);
-        } else if (form.phone) {
-          const confirm = await loginWithPhone(form.phone);
-          setConfirmationResult(confirm);
-          setStep("phone-code");
         } else {
-          setUiError("Enter email/password or phone.");
+          setUiError("Enter email and password.");
         }
       } else if (mode === "register") {
-        if (form.email && form.password) {
+        if (form.email && form.password && form.name) {
           await registerWithEmail(form.email, form.password, form.name);
         } else {
           setUiError("Email, name, and password required.");
         }
       }
-    } catch (err) {
-      setUiError(err.message);
-    }
-    setSubmitting(false);
-  }
-
-  async function handleVerifyCode(e) {
-    e.preventDefault();
-    setUiError("");
-    setSubmitting(true);
-    try {
-      await confirmPhoneCode(confirmationResult, code);
     } catch (err) {
       setUiError(err.message);
     }
@@ -100,8 +78,38 @@ function LoginForm() {
       <h2 style={{ textAlign: "center" }}>
         {mode === "login" ? "Sign in to HomeQuestAI" : "Register"}
       </h2>
-      {step === "form" && (
-        <form autoComplete="off" onSubmit={handleSubmit}>
+      <form autoComplete="off" onSubmit={handleSubmit}>
+        <input
+          style={{
+            margin: "8px 0",
+            width: "100%",
+            borderRadius: 6,
+            border: "1px solid var(--border-color)",
+            padding: 10,
+          }}
+          placeholder="Email"
+          value={form.email}
+          onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+          type="email"
+          disabled={submitting || authLoading}
+          required
+        />
+        <input
+          style={{
+            margin: "8px 0",
+            width: "100%",
+            borderRadius: 6,
+            border: "1px solid var(--border-color)",
+            padding: 10,
+          }}
+          placeholder="Password"
+          value={form.password}
+          onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+          type="password"
+          disabled={submitting || authLoading}
+          required
+        />
+        {mode === "register" && (
           <input
             style={{
               margin: "8px 0",
@@ -110,157 +118,82 @@ function LoginForm() {
               border: "1px solid var(--border-color)",
               padding: 10,
             }}
-            placeholder="Email"
-            value={form.email}
-            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-            type="email"
-            disabled={submitting || authLoading}
-          />
-          <input
-            style={{
-              margin: "8px 0",
-              width: "100%",
-              borderRadius: 6,
-              border: "1px solid var(--border-color)",
-              padding: 10,
-            }}
-            placeholder="Password"
-            value={form.password}
-            onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-            type="password"
-            disabled={submitting || authLoading}
-          />
-          <input
-            style={{
-              margin: "8px 0",
-              width: "100%",
-              borderRadius: 6,
-              border: "1px solid var(--border-color)",
-              padding: 10,
-            }}
-            placeholder="Phone (+91...)"
-            value={form.phone}
-            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-            type="tel"
-            disabled={submitting || authLoading}
-          />
-          {mode === "register" && (
-            <input
-              style={{
-                margin: "8px 0",
-                width: "100%",
-                borderRadius: 6,
-                border: "1px solid var(--border-color)",
-                padding: 10,
-              }}
-              placeholder="Name"
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              type="text"
-              disabled={submitting || authLoading}
-            />
-          )}
-          <button
-            type="submit"
-            style={{
-              width: "100%",
-              marginTop: 14,
-              padding: 10,
-              background: "#81b29a",
-              color: "#fff",
-              fontWeight: 700,
-              border: "none",
-              borderRadius: 7,
-              fontSize: 16,
-              boxShadow: "0 1px 6px #ccc2",
-              cursor: "pointer",
-              opacity: !form.email && !form.phone ? 0.6 : 1,
-            }}
-            disabled={submitting || authLoading || (!form.email && !form.phone)}
-          >
-            {mode === "login" ? "Login" : "Register"}
-          </button>
-          <div style={{ textAlign: "center", marginTop: 13 }}>
-            {mode === "login" ? (
-              <>
-                Don't have an account?{" "}
-                <button
-                  type="button"
-                  style={{
-                    color: "#b38632",
-                    background: "none",
-                    border: "none",
-                    textDecoration: "underline",
-                    cursor: "pointer",
-                    fontWeight: 500,
-                  }}
-                  disabled={submitting || authLoading}
-                  onClick={() => setMode("register")}
-                >
-                  Register
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  style={{
-                    color: "#81b29a",
-                    background: "none",
-                    border: "none",
-                    textDecoration: "underline",
-                    cursor: "pointer",
-                    fontWeight: 500,
-                  }}
-                  disabled={submitting || authLoading}
-                  onClick={() => setMode("login")}
-                >
-                  Login
-                </button>
-              </>
-            )}
-          </div>
-        </form>
-      )}
-      {step === "phone-code" && (
-        <form autoComplete="off" onSubmit={handleVerifyCode}>
-          <input
-            style={{
-              margin: "8px 0",
-              width: "100%",
-              borderRadius: 6,
-              border: "1px solid var(--border-color)",
-              padding: 10,
-            }}
-            placeholder="Verification Code"
-            value={code}
-            onChange={e => setCode(e.target.value)}
+            placeholder="Name"
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             type="text"
             disabled={submitting || authLoading}
+            required
           />
-          <button
-            type="submit"
-            style={{
-              width: "100%",
-              marginTop: 14,
-              padding: 10,
-              background: "#81b29a",
-              color: "#fff",
-              fontWeight: 700,
-              border: "none",
-              borderRadius: 7,
-              fontSize: 16,
-              boxShadow: "0 1px 6px #ccc2",
-              cursor: "pointer",
-              opacity: !code ? 0.6 : 1,
-            }}
-            disabled={submitting || authLoading || !code}
-          >
-            Verify
-          </button>
-        </form>
-      )}
+        )}
+        <button
+          type="submit"
+          style={{
+            width: "100%",
+            marginTop: 14,
+            padding: 10,
+            background: "#81b29a",
+            color: "#fff",
+            fontWeight: 700,
+            border: "none",
+            borderRadius: 7,
+            fontSize: 16,
+            boxShadow: "0 1px 6px #ccc2",
+            cursor: "pointer",
+            opacity: !form.email || !form.password || (mode === "register" && !form.name) ? 0.6 : 1,
+          }}
+          disabled={
+            submitting ||
+            authLoading ||
+            !form.email ||
+            !form.password ||
+            (mode === "register" && !form.name)
+          }
+        >
+          {mode === "login" ? "Login" : "Register"}
+        </button>
+        <div style={{ textAlign: "center", marginTop: 13 }}>
+          {mode === "login" ? (
+            <>
+              Don't have an account?{" "}
+              <button
+                type="button"
+                style={{
+                  color: "#b38632",
+                  background: "none",
+                  border: "none",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                }}
+                disabled={submitting || authLoading}
+                onClick={() => setMode("register")}
+              >
+                Register
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                style={{
+                  color: "#81b29a",
+                  background: "none",
+                  border: "none",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  fontWeight: 500,
+                }}
+                disabled={submitting || authLoading}
+                onClick={() => setMode("login")}
+              >
+                Login
+              </button>
+            </>
+          )}
+        </div>
+      </form>
       <div style={{ color: "crimson", minHeight: 16, textAlign: "center", fontSize: 15, marginTop: 7 }}>
         {uiError || authError}
       </div>
