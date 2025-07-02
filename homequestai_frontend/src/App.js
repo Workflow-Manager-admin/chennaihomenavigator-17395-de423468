@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import * as api from "./api";
 import UserProfile from "./UserProfile";
+import ScheduleViewingModal from "./ScheduleViewingModal";
 
 // Hardcoded amenities list for demo (should come from backend ideally)
 const AMENITIES = [
@@ -184,6 +185,12 @@ function App() {
       return { ...f, amenities: next };
     });
   }
+
+  // Viewing scheduling state
+  const [showScheduleModal, setShowScheduleModal] = useState({
+    open: false,
+    property: null,
+  });
 
   // UI: filter form for property search
   return (
@@ -617,6 +624,32 @@ function App() {
                     <div style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
                       Listed by {p.listed_by_name || `User #${p.listed_by || "?"}`}
                     </div>
+                    <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
+                      <button
+                        style={{
+                          background: "#81b29a",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 7,
+                          fontWeight: 600,
+                          padding: "7px 16px",
+                          cursor: "pointer",
+                          fontSize: 15,
+                          marginTop: 3,
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+                          transition: "all 0.2s",
+                        }}
+                        onClick={() =>
+                          setShowScheduleModal({
+                            open: true,
+                            property: p,
+                          })
+                        }
+                        title="Schedule a viewing"
+                      >
+                        📅 Schedule Viewing
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -653,6 +686,17 @@ function App() {
 
         {/* Error display */}
         {fetchErr && <div style={{ color: "red" }}>{fetchErr}</div>}
+
+        {/* Scheduling Modal */}
+        {showScheduleModal.open && (
+          <ScheduleViewingModal
+            property={showScheduleModal.property}
+            user={user}
+            onClose={() =>
+              setShowScheduleModal({ open: false, property: null })
+            }
+          />
+        )}
 
         {/* Extend: add more sections for scheduling, AI recs, reviews, etc. */}
       </header>
