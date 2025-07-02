@@ -4,10 +4,10 @@ import * as api from "./api";
 import UserProfile from "./UserProfile";
 import ScheduleViewingModal from "./ScheduleViewingModal";
 import ChatWindow from "./ChatWindow";
-// Add reviews import
 import Reviews from "./Reviews";
 import MarketInsightsDashboard from "./MarketInsightsDashboard";
 import VirtualTourARModal from "./VirtualTourARModal";
+import { useAuth } from "./AuthContext";
 
 // Hardcoded amenities list for demo (should come from backend ideally)
 const AMENITIES = [
@@ -22,6 +22,252 @@ const AMENITIES = [
   "Playground",
 ];
 
+function LoginForm() {
+  // Login/register with email and/or phone (Firebase)
+  const {
+    loginWithEmail,
+    registerWithEmail,
+    loginWithPhone,
+    confirmPhoneCode,
+    authLoading,
+    authError,
+  } = useAuth();
+  const [mode, setMode] = useState("login"); // or register
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    name: "",
+    phone: ""
+  });
+  const [step, setStep] = useState("form"); // or phone-code
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [code, setCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [uiError, setUiError] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setUiError("");
+    setSubmitting(true);
+    try {
+      if (mode === "login") {
+        if (form.email && form.password) {
+          await loginWithEmail(form.email, form.password);
+        } else if (form.phone) {
+          const confirm = await loginWithPhone(form.phone);
+          setConfirmationResult(confirm);
+          setStep("phone-code");
+        } else {
+          setUiError("Enter email/password or phone.");
+        }
+      } else if (mode === "register") {
+        if (form.email && form.password) {
+          await registerWithEmail(form.email, form.password, form.name);
+        } else {
+          setUiError("Email, name, and password required.");
+        }
+      }
+    } catch (err) {
+      setUiError(err.message);
+    }
+    setSubmitting(false);
+  }
+
+  async function handleVerifyCode(e) {
+    e.preventDefault();
+    setUiError("");
+    setSubmitting(true);
+    try {
+      await confirmPhoneCode(confirmationResult, code);
+    } catch (err) {
+      setUiError(err.message);
+    }
+    setSubmitting(false);
+  }
+
+  return (
+    <div
+      style={{
+        background: "var(--bg-secondary)",
+        color: "var(--text-primary)",
+        maxWidth: 420,
+        margin: "56px auto 0 auto",
+        borderRadius: 13,
+        boxShadow: "0 2px 16px #81b29a18",
+        padding: "30px 28px",
+      }}
+    >
+      <h2 style={{ textAlign: "center" }}>
+        {mode === "login" ? "Sign in to HomeQuestAI" : "Register"}
+      </h2>
+      {step === "form" && (
+        <form autoComplete="off" onSubmit={handleSubmit}>
+          <input
+            style={{
+              margin: "8px 0",
+              width: "100%",
+              borderRadius: 6,
+              border: "1px solid var(--border-color)",
+              padding: 10,
+            }}
+            placeholder="Email"
+            value={form.email}
+            onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            type="email"
+            disabled={submitting || authLoading}
+          />
+          <input
+            style={{
+              margin: "8px 0",
+              width: "100%",
+              borderRadius: 6,
+              border: "1px solid var(--border-color)",
+              padding: 10,
+            }}
+            placeholder="Password"
+            value={form.password}
+            onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+            type="password"
+            disabled={submitting || authLoading}
+          />
+          <input
+            style={{
+              margin: "8px 0",
+              width: "100%",
+              borderRadius: 6,
+              border: "1px solid var(--border-color)",
+              padding: 10,
+            }}
+            placeholder="Phone (+91...)"
+            value={form.phone}
+            onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+            type="tel"
+            disabled={submitting || authLoading}
+          />
+          {mode === "register" && (
+            <input
+              style={{
+                margin: "8px 0",
+                width: "100%",
+                borderRadius: 6,
+                border: "1px solid var(--border-color)",
+                padding: 10,
+              }}
+              placeholder="Name"
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              type="text"
+              disabled={submitting || authLoading}
+            />
+          )}
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              marginTop: 14,
+              padding: 10,
+              background: "#81b29a",
+              color: "#fff",
+              fontWeight: 700,
+              border: "none",
+              borderRadius: 7,
+              fontSize: 16,
+              boxShadow: "0 1px 6px #ccc2",
+              cursor: "pointer",
+              opacity: !form.email && !form.phone ? 0.6 : 1,
+            }}
+            disabled={submitting || authLoading || (!form.email && !form.phone)}
+          >
+            {mode === "login" ? "Login" : "Register"}
+          </button>
+          <div style={{ textAlign: "center", marginTop: 13 }}>
+            {mode === "login" ? (
+              <>
+                Don't have an account?{" "}
+                <button
+                  type="button"
+                  style={{
+                    color: "#b38632",
+                    background: "none",
+                    border: "none",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                  }}
+                  disabled={submitting || authLoading}
+                  onClick={() => setMode("register")}
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  style={{
+                    color: "#81b29a",
+                    background: "none",
+                    border: "none",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                  }}
+                  disabled={submitting || authLoading}
+                  onClick={() => setMode("login")}
+                >
+                  Login
+                </button>
+              </>
+            )}
+          </div>
+        </form>
+      )}
+      {step === "phone-code" && (
+        <form autoComplete="off" onSubmit={handleVerifyCode}>
+          <input
+            style={{
+              margin: "8px 0",
+              width: "100%",
+              borderRadius: 6,
+              border: "1px solid var(--border-color)",
+              padding: 10,
+            }}
+            placeholder="Verification Code"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+            type="text"
+            disabled={submitting || authLoading}
+          />
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              marginTop: 14,
+              padding: 10,
+              background: "#81b29a",
+              color: "#fff",
+              fontWeight: 700,
+              border: "none",
+              borderRadius: 7,
+              fontSize: 16,
+              boxShadow: "0 1px 6px #ccc2",
+              cursor: "pointer",
+              opacity: !code ? 0.6 : 1,
+            }}
+            disabled={submitting || authLoading || !code}
+          >
+            Verify
+          </button>
+        </form>
+      )}
+      <div style={{ color: "crimson", minHeight: 16, textAlign: "center", fontSize: 15, marginTop: 7 }}>
+        {uiError || authError}
+      </div>
+    </div>
+  );
+}
+
 // PUBLIC_INTERFACE
 function App() {
   // Theme switcher
@@ -32,14 +278,8 @@ function App() {
   const toggleTheme = () =>
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
 
-  // Demo UI state
-  const [user, setUser] = useState(null);
-  const [registerForm, setRegisterForm] = useState({
-    email: "",
-    phone: "",
-    password: "",
-    name: "",
-  });
+  // Get Auth user from context
+  const { user, logout, authLoading } = useAuth();
   const [propertyList, setPropertyList] = useState([]);
   const [fetchErr, setFetchErr] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -67,18 +307,7 @@ function App() {
   const [validation, setValidation] = useState({}); // {min_price: "Must be greater than 0", ...}
 
   // Register a demo user
-  async function handleRegister(e) {
-    e.preventDefault();
-    setFetchErr("");
-    try {
-      const u = await api.registerUser(registerForm);
-      setUser(u);
-      setRequireOnboarding(true);
-      setShowProfile("onboard");
-    } catch (err) {
-      setFetchErr(err.message);
-    }
-  }
+  // (Old demo user registration removed with Firebase Auth)
 
   // Validate filters before fetching
   function validateFilters() {
@@ -275,53 +504,59 @@ function App() {
   // --- AI Recommendations Section state ---
 
   // UI: filter form for property search + recommendation button section
+  if (authLoading) {
+    return (
+      <div className="App">
+        <header className="App-header">
+          <h2>Loading...</h2>
+        </header>
+      </div>
+    );
+  }
+  
+  // Auth guard: block access to rest of the app if not signed in
+  if (!user) {
+    return (
+      <div className="App">
+        <header className="App-header">
+          <button className="theme-toggle" onClick={toggleTheme}>
+            {theme === "light" ? "🌙 Dark" : "☀️ Light"}
+          </button>
+          <LoginForm />
+        </header>
+      </div>
+    );
+  }
+
+  // Show main app
   return (
     <div className="App">
       <header className="App-header">
         <button className="theme-toggle" onClick={toggleTheme}>
           {theme === "light" ? "🌙 Dark" : "☀️ Light"}
         </button>
-        <h1>HomeQuestAI Demo UI</h1>
-        {/* Registration */}
-        {!user && (
-          <form onSubmit={handleRegister} style={{ margin: 16 }}>
-            <div>
-              <input
-                placeholder="Email"
-                value={registerForm.email}
-                onChange={(e) =>
-                  setRegisterForm((f) => ({ ...f, email: e.target.value }))
-                }
-              />
-              <input
-                placeholder="Phone"
-                value={registerForm.phone}
-                onChange={(e) =>
-                  setRegisterForm((f) => ({ ...f, phone: e.target.value }))
-                }
-              />
-              <input
-                placeholder="Password"
-                type="password"
-                value={registerForm.password}
-                onChange={(e) =>
-                  setRegisterForm((f) => ({ ...f, password: e.target.value }))
-                }
-              />
-              <input
-                placeholder="Name"
-                value={registerForm.name}
-                onChange={(e) =>
-                  setRegisterForm((f) => ({ ...f, name: e.target.value }))
-                }
-              />
-              <button type="submit">Register</button>
-            </div>
-          </form>
-        )}
-        {user && (
-          <div style={{ color: "var(--text-secondary)" }}>
-            Logged in as: {user.email} &nbsp;
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: 8 }}>
+          <h1>HomeQuestAI Demo UI</h1>
+          <div>
+            <button
+              style={{
+                background: "#f4cb89",
+                color: "#552E09",
+                border: "none",
+                borderRadius: 8,
+                padding: "7px 14px",
+                fontSize: 14,
+                cursor: "pointer",
+                fontWeight: 700,
+                marginRight: 12,
+                letterSpacing: 0.15,
+                opacity: 0.88
+              }}
+              onClick={logout}
+              title="Logout"
+            >
+              Logout
+            </button>
             <button
               style={{
                 background: "var(--border-color)",
@@ -329,7 +564,6 @@ function App() {
                 border: "none",
                 borderRadius: 7,
                 padding: "6px 16px",
-                marginLeft: 8,
                 fontSize: 13,
                 cursor: "pointer",
                 fontWeight: 500,
@@ -340,7 +574,7 @@ function App() {
               Edit Profile
             </button>
           </div>
-        )}
+        </div>
 
         {/* User Onboarding/Profile Modal */}
         {user && showProfile && (
