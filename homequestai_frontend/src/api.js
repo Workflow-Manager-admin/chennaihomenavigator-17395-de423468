@@ -2,7 +2,37 @@
 // API Layer for HomeQuestAI frontend
 //
 
-const API_BASE = "http://localhost:3001"; // Change if hosted elsewhere
+/**
+ * Selects backend API base URL based on environment:
+ * - If window location is running in a known cloud preview/dev environment, use the cloud URL.
+ * - Otherwise, default to localhost.
+ * You can override with ?api=... querystring for developer testing.
+ */
+function resolveApiBase() {
+    // Local dev fallback
+    let apiBase = "http://localhost:3001";
+    // Use cloud URL if hosting in the standard preview/dev domain
+    if (
+        typeof window !== "undefined" &&
+        window.location &&
+        (
+          window.location.hostname.endsWith("kavia.ai") ||
+          window.location.hostname === "preview" // fallback for some local previews
+        )
+    ) {
+        apiBase = "https://vscode-internal-969-beta.beta01.cloud.kavia.ai:3001";
+    }
+    // Allow override via querystring for fast testing
+    if (typeof window !== "undefined" && window.location && window.location.search.includes("api=")) {
+        const match = window.location.search.match(/[?&]api=([^&]+)/);
+        if (match && match[1]) {
+            apiBase = decodeURIComponent(match[1]);
+        }
+    }
+    return apiBase.replace(/\/+$/, "");
+}
+
+const API_BASE = resolveApiBase();
 
 // Helpers
 async function apiFetch(path, { method = "GET", params, body, headers = {} } = {}) {
