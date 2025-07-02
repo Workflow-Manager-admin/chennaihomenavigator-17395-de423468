@@ -7,6 +7,7 @@ import ChatWindow from "./ChatWindow";
 // Add reviews import
 import Reviews from "./Reviews";
 import MarketInsightsDashboard from "./MarketInsightsDashboard";
+import VirtualTourARModal from "./VirtualTourARModal";
 
 // Hardcoded amenities list for demo (should come from backend ideally)
 const AMENITIES = [
@@ -200,6 +201,76 @@ function App() {
   const [showChat, setShowChat] = useState(false);
   // If user clicks "Chat on this property", we can set property/contact context; otherwise, general support chat.
   const [chatContext, setChatContext] = useState(null);
+
+  // --- VIRTUAL TOUR/AR MODAL (State & handlers) ---
+  const [tourARModal, setTourARModal] = useState({
+    open: false,
+    tourUrl: null,
+    arMedia: null,
+    property: null,
+    loading: false,
+    loadError: null,
+    kind: null, // "tour" or "ar"
+  });
+
+  // Handler for opening the tour or AR modal per property
+  async function handleOpenVirtualTourModal(property, kind) {
+    setTourARModal({
+      open: true,
+      property,
+      tourUrl: null,
+      arMedia: null,
+      loading: true,
+      loadError: null,
+      kind: kind,
+    });
+    try {
+      if (kind === "tour") {
+        // Try to get virtual tour URL
+        const tour = await api.getPropertyTour(property.id);
+        setTourARModal((old) => ({
+          ...old,
+          tourUrl: tour?.url || null,
+          arMedia: null,
+          loading: false,
+          loadError: !tour?.url ? "360° tour unavailable" : null,
+        }));
+      } else if (kind === "ar") {
+        // Get AR preview (marker + model URL)
+        const ar = await api.getARPreview(property.id);
+        setTourARModal((old) => ({
+          ...old,
+          arMedia: ar && ar.arMarkerUrl && ar.arModelUrl ? {
+            arMarkerUrl: ar.arMarkerUrl,
+            arModelUrl: ar.arModelUrl
+          } : null,
+          tourUrl: null,
+          loading: false,
+          loadError: !(ar && ar.arMarkerUrl && ar.arModelUrl)
+            ? "AR preview unavailable"
+            : null,
+        }));
+      }
+    } catch (e) {
+      setTourARModal((old) => ({
+        ...old,
+        loading: false,
+        loadError: "Could not load virtual tour or AR preview."
+      }));
+    }
+  }
+
+  function handleCloseVirtualTourModal() {
+    setTourARModal({
+      open: false,
+      tourUrl: null,
+      arMedia: null,
+      property: null,
+      loading: false,
+      loadError: null,
+      kind: null,
+    });
+  }
 
   // --- AI Recommendations Section state ---
 
@@ -703,6 +774,44 @@ function App() {
                         }}
                         title="Chat about this property"
                       >💬 Chat</button>
+                      <button
+                        style={{
+                          background: "#81b29a",
+                          color: "#fff",
+                          fontWeight: 500,
+                          border: "none",
+                          borderRadius: 7,
+                          padding: "7px 13px",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          marginTop: 3,
+                          boxShadow: "0 1px 3px rgba(204,167,89,0.11)",
+                          transition: "all 0.15s",
+                          display: "flex", alignItems: "center", gap: 3,
+                          opacity: 1,
+                        }}
+                        onClick={() => handleOpenVirtualTourModal(p, "tour")}
+                        title="View 360 Virtual Tour"
+                      >🎥 360° Tour</button>
+                      <button
+                        style={{
+                          background: "#f4cb89",
+                          color: "#6a5224",
+                          fontWeight: 500,
+                          border: "none",
+                          borderRadius: 7,
+                          padding: "7px 13px",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          marginTop: 3,
+                          boxShadow: "0 1px 3px rgba(204,167,89,0.13)",
+                          transition: "all 0.15s",
+                          display: "flex", alignItems: "center", gap: 3,
+                          opacity: 1,
+                        }}
+                        onClick={() => handleOpenVirtualTourModal(p, "ar")}
+                        title="View Augmented Reality (AR) preview"
+                      >🪄 AR Preview</button>
                     </div>
                     {/* --- Reviews panel (expand/collapse for compactness, real UX could improve further) --- */}
                     <div style={{ margin: "9px -8px 0 -8px" }}>
@@ -781,6 +890,38 @@ function App() {
           />
         )}
 
+        {/* --- Virtual Tour / AR Preview Modal --- */}
+        <VirtualTourARModal
+          open={tourARModal.open}
+          tourUrl={tourARModal.tourUrl}
+          arMedia={tourARModal.arMedia}
+          onClose={handleCloseVirtualTourModal}
+        />
+        {tourARModal.open && tourARModal.loading && (
+          <div style={{
+            position: "fixed", left: 0, top: 0, width: "100vw", height: "100vh",
+            display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.40)", zIndex: 9999,
+            pointerEvents: "none"
+          }}>
+            <div style={{
+              background: "#fff", borderRadius: 18, padding: "18px 45px",
+              boxShadow: "0 4px 20px #aaa2", color: "#81b29a", fontWeight: 700, fontSize: 21, userSelect: "none"
+            }}>Loading preview...</div>
+          </div>
+        )}
+        {tourARModal.open && tourARModal.loadError && (
+          <div style={{
+            position: "fixed", left: 0, top: 0, width: "100vw", height: "100vh",
+            display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.05)", zIndex: 9999,
+            pointerEvents: "none"
+          }}>
+            <div style={{
+              background: "#fff3ec", borderRadius: 12, padding: "12px 32px",
+              boxShadow: "0 4px 14px #dde8", color: "#b44e24", fontWeight: 600, fontSize: 16,
+              border: "1.6px solid #f4cb8990"
+            }}>{tourARModal.loadError}</div>
+          </div>
+        )}
         {/* Extend: add more sections for scheduling, AI recs, reviews, etc. */}
       </header>
     </div>
