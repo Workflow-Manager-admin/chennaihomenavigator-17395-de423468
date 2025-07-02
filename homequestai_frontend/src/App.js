@@ -843,7 +843,7 @@ function App() {
               }}
             >
               <h2 style={{ color: "#81b29a", marginBottom: 13, fontWeight: 700 }}>
-                🧠 AI Property Matchmaker
+                🧠 AI Real Estate Scout
               </h2>
               <div style={{ color: "#666", fontSize: 15, marginBottom: 13 }}>
                 Click below to get personalized property recommendations powered by AI, using your profile/interests:
