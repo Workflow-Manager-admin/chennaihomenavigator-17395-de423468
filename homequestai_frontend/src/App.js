@@ -27,6 +27,7 @@ function LoginForm() {
   const {
     loginWithEmail,
     registerWithEmail,
+    loginWithGoogle,
     authLoading,
     authError,
   } = useAuth();
@@ -38,6 +39,8 @@ function LoginForm() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [uiError, setUiError] = useState("");
+  const [googleError, setGoogleError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -61,6 +64,20 @@ function LoginForm() {
       setUiError(err.message);
     }
     setSubmitting(false);
+  }
+
+  // Handle Google sign-in function
+  async function handleGoogleSignIn(e) {
+    e.preventDefault();
+    setGoogleError("");
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle();
+      // Success will redirect via AuthContext state
+    } catch (err) {
+      setGoogleError(err.message);
+    }
+    setGoogleLoading(false);
   }
 
   return (
@@ -194,8 +211,42 @@ function LoginForm() {
           )}
         </div>
       </form>
+      <div style={{
+        textAlign: "center",
+        marginTop: 19,
+        marginBottom: 0
+      }}>
+        <button
+          style={{
+            width: "100%",
+            background: "#fff",
+            color: "#333",
+            border: "1.5px solid #81b29a",
+            borderRadius: 8,
+            padding: "9px 0",
+            fontSize: 16,
+            fontWeight: 600,
+            boxShadow: "0 1px 7px #68a08b09",
+            cursor: googleLoading || authLoading ? "not-allowed" : "pointer",
+            transition: "background 0.16s",
+            marginBottom: 0,
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10
+          }}
+          disabled={googleLoading || authLoading}
+          onClick={handleGoogleSignIn}
+          type="button"
+          title="Sign in with Google"
+        >
+          <svg height="22" width="22" viewBox="0 0 22 22"><g><path fill="#EA4335" d="M11 9h10c.06.32.1.64.1 1 0 2-.7 3.68-2.07 5.02l.02-.02-2.55-2c.32-.52.5-1.14.5-1.82H11z"/><path fill="#4285F4" d="M11 21c2.41 0 4.44-.8 5.96-2.16l.02-.02-2.47-1.97c-.68.46-1.54.76-2.51.76-2 0-3.69-1.36-4.29-3.18l-.02.02-2.54 2C6.13 18.68 8.38 21 11 21z"/><path fill="#FBBC05" d="M6.71 14.63A5.003 5.003 0 016 11c0-.58.1-1.13.25-1.63l-.02.02-2.54-2C3.19 8.36 3 9.65 3 11c0 1.4.2 2.74.6 3.97.02.03 2.54-2.07 2.54-2.07l.57 1.73z"/><path fill="#34A853" d="M11 6.75c.9 0 1.69.32 2.3.86l1.72-1.72C14.18 4.74 12.74 4 11 4c-3.77 0-6.89 2.46-8.16 5.88.03-.05 2.45 1.96 2.45 1.96C5.54 9.43 8.08 6.75 11 6.75z"/></g></svg>
+          <span>{googleLoading ? "Signing in..." : "Sign in with Google"}</span>
+        </button>
+      </div>
       <div style={{ color: "crimson", minHeight: 16, textAlign: "center", fontSize: 15, marginTop: 7 }}>
-        {uiError || authError}
+        {uiError || googleError || authError}
       </div>
     </div>
   );

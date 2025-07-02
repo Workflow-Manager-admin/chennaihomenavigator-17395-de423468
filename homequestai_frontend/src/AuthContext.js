@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   getFirebaseAuth,
-  setupFirebaseRecaptcha
+  setupFirebaseRecaptcha,
+  googleProvider
 } from "./firebase";
 import { 
   createUserWithEmailAndPassword, 
@@ -9,7 +10,8 @@ import {
   signOut, 
   onAuthStateChanged,
   signInWithPhoneNumber,
-  updateProfile
+  updateProfile,
+  signInWithPopup
 } from "firebase/auth";
 
 // PUBLIC_INTERFACE
@@ -134,6 +136,22 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // PUBLIC_INTERFACE
+  async function loginWithGoogle() {
+    setAuthError("");
+    const auth = getFirebaseAuth();
+    setAuthLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      setAuthLoading(false);
+      return result.user;
+    } catch (err) {
+      setAuthError(err.message);
+      setAuthLoading(false);
+      throw err;
+    }
+  }
+
   const value = {
     user,
     firebaseUser,
@@ -144,6 +162,7 @@ export function AuthProvider({ children }) {
     loginWithPhone,
     confirmPhoneCode,
     logout,
+    loginWithGoogle,
   };
 
   return (
