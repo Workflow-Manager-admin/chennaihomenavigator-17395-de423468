@@ -4,6 +4,8 @@ import * as api from "./api";
 import UserProfile from "./UserProfile";
 import ScheduleViewingModal from "./ScheduleViewingModal";
 import ChatWindow from "./ChatWindow";
+// Add reviews import
+import Reviews from "./Reviews";
 
 // Hardcoded amenities list for demo (should come from backend ideally)
 const AMENITIES = [
@@ -583,54 +585,40 @@ function App() {
                       borderRadius: 10,
                       boxShadow: "0 2px 7px rgba(0,0,0,0.05)",
                       padding: 16,
-                      width: 260,
+                      width: 290, // Wider to fit reviews nicely
                       minHeight: 120,
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
+                      position: "relative"
                     }}
                   >
                     <div>
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 18,
-                        }}
-                      >
-                        {p.title || (
-                          <span style={{ color: "#aaa" }}>Untitled</span>
-                        )}
+                      <div style={{ fontWeight: 700, fontSize: 18 }}>
+                        {p.title || (<span style={{ color: "#aaa" }}>Untitled</span>)}
                       </div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: "var(--text-secondary)",
-                          margin: "8px 0",
-                        }}
-                      >
+                      <div style={{
+                        fontSize: 14,
+                        color: "var(--text-secondary)",
+                        margin: "8px 0",
+                      }}>
                         {p.property_type
-                          ? p.property_type.charAt(0).toUpperCase() +
-                            p.property_type.slice(1)
+                          ? p.property_type.charAt(0).toUpperCase() + p.property_type.slice(1)
                           : "Type Unknown"}
                         {" · "}
-                        ₹
-                        {p.price?.toLocaleString?.() ?? p.price ?? "N/A"}
+                        ₹{p.price?.toLocaleString?.() ?? p.price ?? "N/A"}
                         {p.sale_type
                           ? " · " + (p.sale_type === "rental" ? "Rental" : "Purchase")
                           : ""}
                       </div>
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 500,
-                          color: "#6b8e75",
-                        }}
-                      >
-                        {p.location || (
-                          <span style={{ color: "#aaa" }}>
-                            Location not specified
-                          </span>
-                        )}
+                      <div style={{
+                        fontSize: 15,
+                        fontWeight: 500,
+                        color: "#6b8e75",
+                      }}>
+                        {p.location || (<span style={{ color: "#aaa" }}>
+                          Location not specified
+                        </span>)}
                       </div>
                       {Array.isArray(p.amenities) && p.amenities.length > 0 && (
                         <div style={{ color: "#927e34", fontSize: 12, marginTop: 5, marginBottom: 3 }}>
@@ -651,11 +639,15 @@ function App() {
                         </div>
                       )}
                     </div>
-                    {/* Future: Add images/gallery when backend implements property media */}
                     <div style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
                       Listed by {p.listed_by_name || `User #${p.listed_by || "?"}`}
                     </div>
-                    <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "center" }}>
+                    <div style={{
+                      marginTop: 12,
+                      display: "flex",
+                      gap: 8,
+                      justifyContent: "center"
+                    }}>
                       <button
                         style={{
                           background: "#81b29a",
@@ -677,9 +669,7 @@ function App() {
                           })
                         }
                         title="Schedule a viewing"
-                      >
-                        📅 Schedule Viewing
-                      </button>
+                      >📅 Schedule Viewing</button>
                       <button
                         style={{
                           background: "var(--accent, #f4cb89)",
@@ -705,9 +695,15 @@ function App() {
                           });
                         }}
                         title="Chat about this property"
-                      >
-                        💬 Chat
-                      </button>
+                      >💬 Chat</button>
+                    </div>
+                    {/* --- Reviews panel (expand/collapse for compactness, real UX could improve further) --- */}
+                    <div style={{ margin: "9px -8px 0 -8px" }}>
+                      <Reviews
+                        propertyId={p.id}
+                        user={user}
+                        // You can extend this: e.g., isModerator={user?.is_admin}
+                      />
                     </div>
                   </div>
                 ))}
