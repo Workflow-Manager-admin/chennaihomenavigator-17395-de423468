@@ -6,6 +6,7 @@ import ScheduleViewingModal from "./ScheduleViewingModal";
 import ChatWindow from "./ChatWindow";
 // Add reviews import
 import Reviews from "./Reviews";
+import MarketInsightsDashboard from "./MarketInsightsDashboard";
 
 // Hardcoded amenities list for demo (should come from backend ideally)
 const AMENITIES = [
@@ -507,24 +508,30 @@ function App() {
 
         {/* --- AI Recommendations Section --- */}
         {user && (
-          <div
-            style={{
-              margin: "40px auto 0 auto",
-              maxWidth: 570,
-              background: "var(--bg-secondary)",
-              border: "2px solid var(--accent, #f4cb89)",
-              borderRadius: 18,
-              padding: 18,
-              boxShadow: "0 1px 14px rgba(244,203,137,0.11)",
-            }}
-          >
-            <h2 style={{ color: "#81b29a", marginBottom: 13, fontWeight: 700 }}>
-              🧠 AI Property Matchmaker
-            </h2>
-            <div style={{ color: "#666", fontSize: 15, marginBottom: 13 }}>
-              Click below to get personalized property recommendations powered by AI, using your profile/interests:
+          <div>
+            <div
+              style={{
+                margin: "40px auto 0 auto",
+                maxWidth: 570,
+                background: "var(--bg-secondary)",
+                border: "2px solid var(--accent, #f4cb89)",
+                borderRadius: 18,
+                padding: 18,
+                boxShadow: "0 1px 14px rgba(244,203,137,0.11)",
+              }}
+            >
+              <h2 style={{ color: "#81b29a", marginBottom: 13, fontWeight: 700 }}>
+                🧠 AI Property Matchmaker
+              </h2>
+              <div style={{ color: "#666", fontSize: 15, marginBottom: 13 }}>
+                Click below to get personalized property recommendations powered by AI, using your profile/interests:
+              </div>
+              <AIRecommendations user={user} />
             </div>
-            <AIRecommendations user={user} />
+            {/* --- Market Insights Dashboard Section --- */}
+            <div style={{ margin: "38px 0 0 0" }}>
+              <MarketInsightsDashboard />
+            </div>
           </div>
         )}
 
