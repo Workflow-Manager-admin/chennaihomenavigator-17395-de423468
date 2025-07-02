@@ -3,10 +3,21 @@ import * as api from "./api";
 
 /**
  * PUBLIC_INTERFACE
- * Reviews component for property pages (user submission, browsing, flagging, and moderation).
- * - Display property reviews
- * - Authenticated users can submit reviews and flag/report problematic ones
- * - If moderator, show "pending reviews" and allow approve/remove
+ * Reviews component for property pages.
+ *
+ * This component allows users to:
+ *  - Write a review (text + rating) for a property.
+ *  - Read all approved reviews for a given property.
+ *  - Flag/report property reviews for moderation.
+ *
+ * Moderators (optionally via isModerator) can:
+ *  - View pending reviews for this property.
+ *  - Approve or remove reviews.
+ *
+ * Integration points:
+ *   - Fetch/submit reviews are all handled via ./api.js endpoints (which connect to backend).
+ *   - See ./api.js for: getPropertyReviews, createReview, getPendingReviews, approveReview
+ *   - If moderation flow changes, update API accordingly.
  *
  * Props:
  *   - propertyId: (string|number) required
@@ -14,7 +25,6 @@ import * as api from "./api";
  *   - isModerator: boolean (optional), if true shows moderation UI
  *   - style: style object (optional)
  */
-
 function Reviews({
   propertyId,
   user,
@@ -351,6 +361,18 @@ function Reviews({
       {/* --- MODERATION TAB for admins --- */}
       {isModerator && (
         <div style={{ margin: "26px 0 0 0" }}>
+          {/* Show a moderator tip/help */}
+          <div style={{
+            background: "rgba(244,203,137,0.14)",
+            color: "#b38632",
+            borderRadius: 9,
+            fontWeight: 500,
+            fontSize: 13.5,
+            marginBottom: 11,
+            padding: 7
+          }}>
+            Moderator mode: Review and approve or reject pending property reviews below.
+          </div>
           <div style={{ display: "flex", gap: 14 }}>
             <button
               style={{
@@ -416,7 +438,8 @@ function Reviews({
                 >
                   <div style={{ fontWeight: 600, color: "#b38632" }}>
                     {renderStars(Number(pr.rating))} <span>
-                    {pr.rating}/5 by {pr.user_name || pr.user_email || `#${pr.user_id}`}</span>
+                    {pr.rating}/5 by {pr.user_name || pr.user_email || `#${pr.user_id}`}
+                    </span>
                   </div>
                   <div style={{ fontSize: 14, color: "#3a391d", margin: "6px 0 5px 0" }}>
                     {pr.text}
