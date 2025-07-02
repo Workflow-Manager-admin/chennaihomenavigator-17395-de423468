@@ -198,7 +198,9 @@ function App() {
   // If user clicks "Chat on this property", we can set property/contact context; otherwise, general support chat.
   const [chatContext, setChatContext] = useState(null);
 
-  // UI: filter form for property search
+  // --- AI Recommendations Section state ---
+
+  // UI: filter form for property search + recommendation button section
   return (
     <div className="App">
       <header className="App-header">
@@ -501,6 +503,29 @@ function App() {
           </div>
         </div>
 
+        {/* --- AI Recommendations Section --- */}
+        {user && (
+          <div
+            style={{
+              margin: "40px auto 0 auto",
+              maxWidth: 570,
+              background: "var(--bg-secondary)",
+              border: "2px solid var(--accent, #f4cb89)",
+              borderRadius: 18,
+              padding: 18,
+              boxShadow: "0 1px 14px rgba(244,203,137,0.11)",
+            }}
+          >
+            <h2 style={{ color: "#81b29a", marginBottom: 13, fontWeight: 700 }}>
+              🧠 AI Property Matchmaker
+            </h2>
+            <div style={{ color: "#666", fontSize: 15, marginBottom: 13 }}>
+              Click below to get personalized property recommendations powered by AI, using your profile/interests:
+            </div>
+            <AIRecommendations user={user} />
+          </div>
+        )}
+
         {/* PROPERTY LISTINGS */}
         <div style={{ minHeight: 180 }}>
           {isLoading && (
@@ -755,6 +780,133 @@ function App() {
 
         {/* Extend: add more sections for scheduling, AI recs, reviews, etc. */}
       </header>
+    </div>
+  );
+}
+
+// --- AI Recommendations Button & Results ---
+function AIRecommendations({ user }) {
+  const [loading, setLoading] = React.useState(false);
+  const [results, setResults] = React.useState(null); // array of properties or null
+  const [error, setError] = React.useState("");
+  // Give memory of last load (show last fetched results after page reload until logout)
+  React.useEffect(() => {
+    setResults(null);
+    setError("");
+    setLoading(false);
+  }, [user?.id]);
+
+  // PUBLIC_INTERFACE
+  async function handleGetRecommendations() {
+    setLoading(true);
+    setError("");
+    setResults(null);
+    try {
+      // try/catch here in case API throws
+      const aiResults = await api.getAIRecommendations(user.id);
+      if (!Array.isArray(aiResults) || aiResults.length === 0) {
+        setError("No personalized matches were found at this time.");
+        setResults([]);
+      } else {
+        setResults(aiResults);
+      }
+    } catch (err) {
+      setError(err?.message || "Failed to load AI recommendations.");
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <div>
+      <button
+        style={{
+          background: "linear-gradient(90deg,#81b29a 60%, #f4cb89 100%)",
+          color: "#fff",
+          fontWeight: 600,
+          border: "none",
+          borderRadius: 12,
+          fontSize: 17,
+          boxShadow: "0 2px 13px rgba(244,203,137,0.11)",
+          marginBottom: 10,
+          minWidth: 185,
+          minHeight: 42,
+          cursor: loading ? "wait" : "pointer",
+          opacity: loading ? 0.68 : 1,
+          transition: "background 0.18s",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 9,
+        }}
+        disabled={loading}
+        onClick={handleGetRecommendations}
+        title="Get personalized AI property recommendations"
+      >
+        <span role="img" aria-label="wand">✨</span>
+        {loading ? "Finding matches..." : "Show AI Matches"}
+      </button>
+      <div style={{ minHeight: 27, fontSize: 15, color: error ? "#b12d2d" : "#6b8e75", marginTop: 3, marginBottom: 3 }}>
+        {error && <>⚠️ {error}</>}
+      </div>
+      {!loading && Array.isArray(results) && (
+        <div>
+          {results.length === 0 && !error && (
+            <div style={{ color: "#999", fontSize: 14, textAlign: "center", marginTop: 9 }}>
+              No recommendations found for your current profile. Try updating your profile details.
+            </div>
+          )}
+          {results.length > 0 && (
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 17,
+              justifyContent: "center",
+              marginTop: 11
+            }}>
+              {results.map((rec, idx) => (
+                <div
+                  key={rec.id || idx}
+                  style={{
+                    background: "var(--bg-primary)",
+                    border: "1.5px solid #81b29a",
+                    borderRadius: 13,
+                    minWidth: 215,
+                    maxWidth: 295,
+                    minHeight: 86,
+                    padding: "13px 13px 9px 17px",
+                    boxShadow: "0 2px 8px rgba(41,122,82,0.08)",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 17, color: "#406e55" }}>
+                    {(rec.title || "Recommended Property")}
+                  </div>
+                  <div style={{ fontSize: 14, color: "#6b8e75", margin: "5px 0 2px 0" }}>
+                    {rec.location || "Location N/A"} | {rec.property_type ? (rec.property_type.charAt(0).toUpperCase() + rec.property_type.slice(1)) : "Type N/A"}
+                  </div>
+                  <div style={{ fontSize: 15, color: "#b38632", fontWeight: 500 }}>
+                    ₹{rec.price?.toLocaleString?.() ?? rec.price ?? "N/A"}
+                  </div>
+                  {Array.isArray(rec.amenities) && rec.amenities.length > 0 &&
+                    <div style={{ fontSize: 12, color: "#927e34", marginTop: 2, marginBottom: 1 }}>
+                      Amenities: {rec.amenities.join(", ")}
+                    </div>
+                  }
+                  {rec.description && (
+                    <div style={{ fontSize: 13, color: "#5e5e5e", marginTop: 3 }}>
+                      {rec.description?.slice(0, 68)}{rec.description?.length > 68 ? "..." : ""}
+                    </div>
+                  )}
+                  {/* Extend: Add "View Details" or "Schedule Viewing" here if linking to property page */}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
