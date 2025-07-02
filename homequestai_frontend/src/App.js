@@ -3,6 +3,7 @@ import "./App.css";
 import * as api from "./api";
 import UserProfile from "./UserProfile";
 import ScheduleViewingModal from "./ScheduleViewingModal";
+import ChatWindow from "./ChatWindow";
 
 // Hardcoded amenities list for demo (should come from backend ideally)
 const AMENITIES = [
@@ -191,6 +192,11 @@ function App() {
     open: false,
     property: null,
   });
+
+  // Chat state (floating chat UI trigger)
+  const [showChat, setShowChat] = useState(false);
+  // If user clicks "Chat on this property", we can set property/contact context; otherwise, general support chat.
+  const [chatContext, setChatContext] = useState(null);
 
   // UI: filter form for property search
   return (
@@ -624,7 +630,7 @@ function App() {
                     <div style={{ fontSize: 12, color: "#999", marginTop: 8 }}>
                       Listed by {p.listed_by_name || `User #${p.listed_by || "?"}`}
                     </div>
-                    <div style={{ marginTop: 12, display: "flex", justifyContent: "center" }}>
+                    <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "center" }}>
                       <button
                         style={{
                           background: "#81b29a",
@@ -649,6 +655,34 @@ function App() {
                       >
                         📅 Schedule Viewing
                       </button>
+                      <button
+                        style={{
+                          background: "var(--accent, #f4cb89)",
+                          color: "#6c4322",
+                          border: "none",
+                          borderRadius: 7,
+                          fontWeight: 500,
+                          padding: "7px 14px",
+                          cursor: "pointer",
+                          fontSize: 15,
+                          marginTop: 3,
+                          boxShadow: "0 1px 3px rgba(244,203,137,0.14)",
+                          transition: "all 0.19s",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                        onClick={() => {
+                          setShowChat(true);
+                          setChatContext({
+                            contact: { id: p.listed_by, name: p.listed_by_name || `User #${p.listed_by}`, phone: p.listed_by_phone },
+                            property: p
+                          });
+                        }}
+                        title="Chat about this property"
+                      >
+                        💬 Chat
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -657,31 +691,52 @@ function App() {
           )}
         </div>
 
-        {/* Chat */}
+        {/* Floating Chat Trigger */}
         {user && (
-          <section>
-            <h3>Chat (WebSocket Demo)</h3>
-            <form onSubmit={sendMessage} style={{ display: "flex", gap: 8 }}>
-              <input
-                placeholder="Type chat msg"
-                value={chatMsg}
-                onChange={(e) => setChatMsg(e.target.value)}
+          <>
+            {!showChat && (
+              <button
+                style={{
+                  position: "fixed",
+                  right: 32,
+                  bottom: 38,
+                  zIndex: 1001,
+                  background: "linear-gradient(90deg,#81b29a 70%,#f4cb89 100%)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 17,
+                  padding: "13px 24px",
+                  borderRadius: 18,
+                  boxShadow: "0 5px 30px rgba(129,178,154,0.20)",
+                  border: "none",
+                  cursor: "pointer",
+                  letterSpacing: 0.1,
+                  transition: "all 0.19s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+                onClick={() => {
+                  setShowChat(true);
+                  setChatContext(null); // General support chat unless set from property
+                }}
+                title="Open in-app chat"
+              >
+                <span role="img" aria-label="chat">💬</span> Chat
+              </button>
+            )}
+            {showChat && (
+              <ChatWindow
+                user={user}
+                contact={chatContext?.contact}
+                property={chatContext?.property}
+                onClose={() => {
+                  setShowChat(false);
+                  setChatContext(null);
+                }}
               />
-              <button type="submit">Send</button>
-            </form>
-            <div style={{ maxHeight: 150, overflow: "auto", minWidth: 200 }}>
-              {wsMessages.map((msg, idx) => (
-                <div key={idx}>
-                  <span>
-                    {msg?.from ? <b>From {msg.from}:</b> : null}{" "}
-                    {msg.echoed_message ||
-                      msg.message ||
-                      JSON.stringify(msg)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+            )}
+          </>
         )}
 
         {/* Error display */}
