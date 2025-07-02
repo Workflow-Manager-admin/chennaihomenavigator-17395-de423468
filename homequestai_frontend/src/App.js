@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import * as api from "./api";
+import UserProfile from "./UserProfile";
 
 // PUBLIC_INTERFACE
 function App() {
@@ -34,6 +35,12 @@ function App() {
   const [wsMessages, setWsMessages] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
 
+  // User onboarding/profile modal state (null: hidden, "onboard" or "edit": shown)
+  const [showProfile, setShowProfile] = useState(null);
+
+  // After new registration, indicate if onboarding needed (if no profile found automatically show onboarding modal)
+  const [requireOnboarding, setRequireOnboarding] = useState(false);
+
   // Register a demo user
   async function handleRegister(e) {
     e.preventDefault();
@@ -41,6 +48,9 @@ function App() {
     try {
       const u = await api.registerUser(registerForm);
       setUser(u);
+      // Onboarding required after registration!
+      setRequireOnboarding(true);
+      setShowProfile("onboard");
     } catch (err) {
       setFetchErr(err.message);
     }
@@ -74,6 +84,20 @@ function App() {
     });
     setActiveChat(ws);
     return () => { ws && ws.close(); };
+  }, [user?.id]);
+
+  // Check for no profile: onboarding logic
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      try {
+        await api.getProfile(user.id);
+        setRequireOnboarding(false);
+      } catch {
+        setRequireOnboarding(true);
+        setShowProfile("onboard");
+      }
+    })();
   }, [user?.id]);
 
   function sendMessage(e) {
@@ -128,7 +152,49 @@ function App() {
             </div>
           </form>
         )}
-        {user && <div style={{ color: "var(--text-secondary)" }}>Logged in as: {user.email}</div>}
+        {user && <div style={{ color: "var(--text-secondary)" }}>
+          Logged in as: {user.email} &nbsp;
+          <button
+            style={{
+              background: "var(--border-color)",
+              color: "#222",
+              border: "none",
+              borderRadius: 7,
+              padding: "6px 16px",
+              marginLeft: 8,
+              fontSize: 13,
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+            onClick={() => setShowProfile("edit")}
+            title="Edit profile"
+          >Edit Profile</button>
+        </div>}
+
+        {/* User Onboarding/Profile Modal */}
+        {user && showProfile && (
+          <div style={{
+            position: "fixed",
+            left: 0, top: 0, width: "100vw", height: "100vh",
+            background: "rgba(0,0,0,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 999
+          }}>
+            <div style={{ background: "white", borderRadius: 18, minWidth: 370, boxShadow: "0 6px 44px rgba(0,0,0,0.22)" }}>
+              <UserProfile
+                user={user}
+                onProfileSaved={() => {
+                  setShowProfile(null);
+                  setRequireOnboarding(false);
+                }}
+                onCancel={() => {
+                  if (requireOnboarding) return; // prevent closing at onboarding
+                  setShowProfile(null);
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Fetch properties */}
         <div style={{ margin: "1rem 0" }}>
