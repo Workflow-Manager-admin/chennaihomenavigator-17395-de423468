@@ -3,6 +3,19 @@ import "./App.css";
 import * as api from "./api";
 import UserProfile from "./UserProfile";
 
+// Hardcoded amenities list for demo (should come from backend ideally)
+const AMENITIES = [
+  "Parking",
+  "Balcony",
+  "Power Backup",
+  "Swimming Pool",
+  "Gym",
+  "Garden",
+  "Lift",
+  "24x7 Security",
+  "Playground",
+];
+
 // PUBLIC_INTERFACE
 function App() {
   // Theme switcher
@@ -24,12 +37,15 @@ function App() {
   const [propertyList, setPropertyList] = useState([]);
   const [fetchErr, setFetchErr] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // --- ENHANCED FILTER STATE ---
   const [filters, setFilters] = useState({
     location: "",
     property_type: "",
     min_price: "",
     max_price: "",
-    // Future: add more filters as needed
+    sale_type: "", // rent or purchase
+    amenities: [], // Array of strings
   });
   const [chatMsg, setChatMsg] = useState("");
   const [wsMessages, setWsMessages] = useState([]);
@@ -41,6 +57,9 @@ function App() {
   // After new registration, indicate if onboarding needed (if no profile found automatically show onboarding modal)
   const [requireOnboarding, setRequireOnboarding] = useState(false);
 
+  // FIELD VALIDATION STATES
+  const [validation, setValidation] = useState({}); // {min_price: "Must be greater than 0", ...}
+
   // Register a demo user
   async function handleRegister(e) {
     e.preventDefault();
@@ -48,7 +67,6 @@ function App() {
     try {
       const u = await api.registerUser(registerForm);
       setUser(u);
-      // Onboarding required after registration!
       setRequireOnboarding(true);
       setShowProfile("onboard");
     } catch (err) {
@@ -56,16 +74,48 @@ function App() {
     }
   }
 
-  // Fetch properties
+  // Validate filters before fetching
+  function validateFilters() {
+    const errs = {};
+    if (
+      filters.min_price !== "" &&
+      (isNaN(Number(filters.min_price)) || Number(filters.min_price) < 0)
+    ) {
+      errs.min_price = "Minimum price must be a positive number";
+    }
+    if (
+      filters.max_price !== "" &&
+      (isNaN(Number(filters.max_price)) || Number(filters.max_price) < 0)
+    ) {
+      errs.max_price = "Maximum price must be a positive number";
+    }
+    if (
+      filters.min_price !== "" &&
+      filters.max_price !== "" &&
+      Number(filters.min_price) > Number(filters.max_price)
+    ) {
+      errs.max_price = "Maximum price must be greater than minimum price";
+    }
+    setValidation(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  // Fetch properties with filters
   // PUBLIC_INTERFACE
-  async function fetchProperties() {
+  async function fetchProperties(auto = false) {
+    // auto=true disables validation (used on mount)
     setFetchErr("");
+    if (!auto && !validateFilters()) return;
     setIsLoading(true);
     try {
-      // Prepare filters object, remove empty keys for cleaner API requests
+      // Only send filters with non-blank values
       const filterReq = {};
       Object.entries(filters).forEach(([k, v]) => {
-        if (v !== "") filterReq[k] = v;
+        if (k === "amenities" && Array.isArray(v) && v.length > 0) {
+          filterReq[k] = v.join(",");
+        } else if (v !== "" && !(Array.isArray(v) && v.length === 0)) {
+          filterReq[k] = v;
+        }
       });
       const props = await api.listProperties(filterReq);
       setPropertyList(Array.isArray(props) ? props : []);
@@ -76,6 +126,18 @@ function App() {
     }
   }
 
+  // Auto-fetch properties on mount
+  useEffect(() => {
+    fetchProperties(true);
+    // eslint-disable-next-line
+  }, []);
+
+  // Fetch on filter change ("live search" UX, but not for every keystroke, only for controlled fields)
+  useEffect(() => {
+    fetchProperties(true);
+    // eslint-disable-next-line
+  }, [filters.sale_type, filters.property_type, filters.amenities]);
+
   // Connect WebSocket for chat
   useEffect(() => {
     if (!user?.id) return;
@@ -83,7 +145,9 @@ function App() {
       onMessage: (msg) => setWsMessages((old) => [...old, msg]),
     });
     setActiveChat(ws);
-    return () => { ws && ws.close(); };
+    return () => {
+      ws && ws.close();
+    };
   }, [user?.id]);
 
   // Check for no profile: onboarding logic
@@ -108,6 +172,20 @@ function App() {
     }
   }
 
+  // Handle amenity toggle for multi-select UI
+  function handleAmenityChange(am) {
+    setFilters((f) => {
+      let next = Array.isArray(f.amenities) ? [...f.amenities] : [];
+      if (next.includes(am)) {
+        next = next.filter((a) => a !== am);
+      } else {
+        next.push(am);
+      }
+      return { ...f, amenities: next };
+    });
+  }
+
+  // UI: filter form for property search
   return (
     <div className="App">
       <header className="App-header">
@@ -152,35 +230,53 @@ function App() {
             </div>
           </form>
         )}
-        {user && <div style={{ color: "var(--text-secondary)" }}>
-          Logged in as: {user.email} &nbsp;
-          <button
-            style={{
-              background: "var(--border-color)",
-              color: "#222",
-              border: "none",
-              borderRadius: 7,
-              padding: "6px 16px",
-              marginLeft: 8,
-              fontSize: 13,
-              cursor: "pointer",
-              fontWeight: 500,
-            }}
-            onClick={() => setShowProfile("edit")}
-            title="Edit profile"
-          >Edit Profile</button>
-        </div>}
+        {user && (
+          <div style={{ color: "var(--text-secondary)" }}>
+            Logged in as: {user.email} &nbsp;
+            <button
+              style={{
+                background: "var(--border-color)",
+                color: "#222",
+                border: "none",
+                borderRadius: 7,
+                padding: "6px 16px",
+                marginLeft: 8,
+                fontSize: 13,
+                cursor: "pointer",
+                fontWeight: 500,
+              }}
+              onClick={() => setShowProfile("edit")}
+              title="Edit profile"
+            >
+              Edit Profile
+            </button>
+          </div>
+        )}
 
         {/* User Onboarding/Profile Modal */}
         {user && showProfile && (
-          <div style={{
-            position: "fixed",
-            left: 0, top: 0, width: "100vw", height: "100vh",
-            background: "rgba(0,0,0,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 999
-          }}>
-            <div style={{ background: "white", borderRadius: 18, minWidth: 370, boxShadow: "0 6px 44px rgba(0,0,0,0.22)" }}>
+          <div
+            style={{
+              position: "fixed",
+              left: 0,
+              top: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0,0,0,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 999,
+            }}
+          >
+            <div
+              style={{
+                background: "white",
+                borderRadius: 18,
+                minWidth: 370,
+                boxShadow: "0 6px 44px rgba(0,0,0,0.22)",
+              }}
+            >
               <UserProfile
                 user={user}
                 onProfileSaved={() => {
@@ -188,7 +284,7 @@ function App() {
                   setRequireOnboarding(false);
                 }}
                 onCancel={() => {
-                  if (requireOnboarding) return; // prevent closing at onboarding
+                  if (requireOnboarding) return;
                   setShowProfile(null);
                 }}
               />
@@ -198,25 +294,71 @@ function App() {
 
         {/* Fetch properties */}
         <div style={{ margin: "1rem 0" }}>
-          {/* --- FILTERS (extensible) --- */}
+          {/* --- FILTERS (rental/purchase, budget, amenities, location) --- */}
           <form
-            style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "center", marginBottom: 10 }}
-            onSubmit={e => {
+            style={{
+              display: "flex",
+              gap: 8,
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 10,
+              background: "var(--bg-secondary)",
+              borderRadius: 10,
+              padding: 12,
+              boxShadow: "0 1px 8px rgba(0,0,0,0.03)",
+            }}
+            onSubmit={(e) => {
               e.preventDefault();
               fetchProperties();
             }}
+            autoComplete="off"
+            noValidate
           >
             <input
-              style={{ borderRadius: 6, border: "1px solid var(--border-color)", padding: "8px" }}
+              style={{
+                borderRadius: 6,
+                border: "1px solid var(--border-color)",
+                padding: "8px",
+              }}
               type="text"
               placeholder="Location"
               value={filters.location}
-              onChange={e => setFilters(f => ({ ...f, location: e.target.value }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, location: e.target.value }))
+              }
             />
+
             <select
-              style={{ borderRadius: 6, border: "1px solid var(--border-color)", padding: "8px" }}
+              style={{
+                borderRadius: 6,
+                border: "1px solid var(--border-color)",
+                padding: "8px",
+              }}
+              value={filters.sale_type}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, sale_type: e.target.value }))
+              }
+              required
+            >
+              <option value="">Rent or Buy?</option>
+              <option value="rental">Rental</option>
+              <option value="purchase">Purchase</option>
+            </select>
+
+            <select
+              style={{
+                borderRadius: 6,
+                border: "1px solid var(--border-color)",
+                padding: "8px",
+              }}
               value={filters.property_type}
-              onChange={e => setFilters(f => ({ ...f, property_type: e.target.value }))}
+              onChange={(e) =>
+                setFilters((f) => ({
+                  ...f,
+                  property_type: e.target.value,
+                }))
+              }
             >
               <option value="">Type</option>
               <option value="apartment">Apartment</option>
@@ -224,53 +366,176 @@ function App() {
               <option value="villa">Villa</option>
               <option value="plot">Plot</option>
             </select>
+
             <input
-              style={{ width: 90, borderRadius: 6, border: "1px solid var(--border-color)", padding: "8px" }}
+              style={{
+                width: 90,
+                borderRadius: 6,
+                border: validation.min_price
+                  ? "1.5px solid crimson"
+                  : "1px solid var(--border-color)",
+                padding: "8px",
+              }}
               type="number"
               min="0"
+              step="1"
               placeholder="Min ₹"
               value={filters.min_price}
-              onChange={e => setFilters(f => ({ ...f, min_price: e.target.value }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, min_price: e.target.value }))
+              }
             />
             <input
-              style={{ width: 90, borderRadius: 6, border: "1px solid var(--border-color)", padding: "8px" }}
+              style={{
+                width: 90,
+                borderRadius: 6,
+                border: validation.max_price
+                  ? "1.5px solid crimson"
+                  : "1px solid var(--border-color)",
+                padding: "8px",
+              }}
               type="number"
               min="0"
+              step="1"
               placeholder="Max ₹"
               value={filters.max_price}
-              onChange={e => setFilters(f => ({ ...f, max_price: e.target.value }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, max_price: e.target.value }))
+              }
             />
-            <button className="theme-toggle" type="submit" style={{ position: "static", fontWeight: 500, borderRadius: 8 }}>
+
+            {/* AMENITIES MULTI-SELECT */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "var(--bg-primary)",
+                border: "1px solid var(--border-color)",
+                borderRadius: 8,
+                padding: "2px 10px",
+                maxWidth: 220,
+                minHeight: 40,
+                flexWrap: "wrap",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "#999",
+                  fontWeight: 500,
+                  marginRight: 3,
+                }}
+              >
+                Amenities:
+              </span>
+              {AMENITIES.map((am) => (
+                <label
+                  key={am}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-primary)",
+                    marginRight: 4,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  title={am}
+                >
+                  <input
+                    type="checkbox"
+                    checked={Array.isArray(filters.amenities) && filters.amenities.includes(am)}
+                    onChange={() => handleAmenityChange(am)}
+                    style={{
+                      marginRight: 2,
+                      accentColor: "#81b29a",
+                    }}
+                  />
+                  {am}
+                </label>
+              ))}
+            </div>
+
+            <button
+              className="theme-toggle"
+              type="submit"
+              style={{
+                position: "static",
+                fontWeight: 500,
+                borderRadius: 8,
+                opacity: isLoading ? 0.7 : 1,
+              }}
+              disabled={isLoading}
+              title="Apply Filters"
+            >
               {isLoading ? "Loading..." : "See Properties"}
             </button>
           </form>
+          {/* FIELD ERRORS */}
+          <div style={{ minHeight: 18, marginTop: -5 }}>
+            {Object.values(validation).map((v, idx) => (
+              <span
+                style={{
+                  color: "crimson",
+                  fontSize: 13,
+                  marginRight: 9,
+                }}
+                key={idx}
+              >
+                {v}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* PROPERTY LISTINGS */}
         <div style={{ minHeight: 180 }}>
-          {isLoading && <div style={{ color: "var(--text-secondary)" }}>Loading properties...</div>}
+          {isLoading && (
+            <div style={{ color: "var(--text-secondary)" }}>
+              Loading properties...
+            </div>
+          )}
 
           {!isLoading && fetchErr && (
             <div style={{ color: "crimson", margin: "10px 0" }}>{fetchErr}</div>
           )}
 
           {!isLoading && propertyList.length === 0 && !fetchErr && (
-            <div style={{ color: "var(--text-secondary)", fontStyle: "italic" }}>
+            <div
+              style={{
+                color: "var(--text-secondary)",
+                fontStyle: "italic",
+              }}
+            >
               No properties found.&nbsp;
-              <button style={{ background: "none", color: "var(--text-secondary)", border: "none", cursor: "pointer", textDecoration: "underline" }}
+              <button
+                style={{
+                  background: "none",
+                  color: "var(--text-secondary)",
+                  border: "none",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
                 onClick={() => fetchProperties()}
-              >Reload</button>
+              >
+                Reload
+              </button>
             </div>
           )}
           {!isLoading && propertyList.length > 0 && (
             <div>
-              <h2 style={{ color: "var(--text-primary)", marginBottom: 14 }}>Properties</h2>
-              <div style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "20px",
-                justifyContent: "center", alignItems: "stretch"
-              }}>
+              <h2 style={{ color: "var(--text-primary)", marginBottom: 14 }}>
+                Properties
+              </h2>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "20px",
+                  justifyContent: "center",
+                  alignItems: "stretch",
+                }}
+              >
                 {propertyList.map((p) => (
                   <div
                     key={p.id}
@@ -284,22 +549,67 @@ function App() {
                       minHeight: 120,
                       display: "flex",
                       flexDirection: "column",
-                      justifyContent: "space-between"
+                      justifyContent: "space-between",
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 18 }}>{p.title || <span style={{ color: "#aaa" }}>Untitled</span>}</div>
-                      <div style={{ fontSize: 14, color: "var(--text-secondary)", margin: "8px 0" }}>
-                        {p.property_type ? p.property_type.charAt(0).toUpperCase() + p.property_type.slice(1) : "Type Unknown"}
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 18,
+                        }}
+                      >
+                        {p.title || (
+                          <span style={{ color: "#aaa" }}>Untitled</span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: "var(--text-secondary)",
+                          margin: "8px 0",
+                        }}
+                      >
+                        {p.property_type
+                          ? p.property_type.charAt(0).toUpperCase() +
+                            p.property_type.slice(1)
+                          : "Type Unknown"}
                         {" · "}
-                        ₹{p.price?.toLocaleString?.() ?? p.price ?? "N/A"}
+                        ₹
+                        {p.price?.toLocaleString?.() ?? p.price ?? "N/A"}
+                        {p.sale_type
+                          ? " · " + (p.sale_type === "rental" ? "Rental" : "Purchase")
+                          : ""}
                       </div>
-                      <div style={{ fontSize: 15, fontWeight: 500, color: "#6b8e75" }}>
-                        {p.location || <span style={{ color: "#aaa" }}>Location not specified</span>}
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 500,
+                          color: "#6b8e75",
+                        }}
+                      >
+                        {p.location || (
+                          <span style={{ color: "#aaa" }}>
+                            Location not specified
+                          </span>
+                        )}
                       </div>
+                      {Array.isArray(p.amenities) && p.amenities.length > 0 && (
+                        <div style={{ color: "#927e34", fontSize: 12, marginTop: 5, marginBottom: 3 }}>
+                          Amenities: {p.amenities.join(", ")}
+                        </div>
+                      )}
                       {p.description && (
-                        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 5, marginBottom: 2 }}>
-                          {p.description?.slice(0, 75)}{p.description?.length > 75 ? "..." : ""}
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "var(--text-secondary)",
+                            marginTop: 5,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {p.description?.slice(0, 75)}
+                          {p.description?.length > 75 ? "..." : ""}
                         </div>
                       )}
                     </div>
@@ -331,7 +641,9 @@ function App() {
                 <div key={idx}>
                   <span>
                     {msg?.from ? <b>From {msg.from}:</b> : null}{" "}
-                    {msg.echoed_message || msg.message || JSON.stringify(msg)}
+                    {msg.echoed_message ||
+                      msg.message ||
+                      JSON.stringify(msg)}
                   </span>
                 </div>
               ))}
