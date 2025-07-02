@@ -20,7 +20,7 @@ function resolveApiBase() {
           window.location.hostname === "preview" // fallback for some local previews
         )
     ) {
-        apiBase = "https://vscode-internal-969-beta.beta01.cloud.kavia.ai:3001";
+        apiBase = "https://vscode-internal-68819-beta.beta01.cloud.kavia.ai:3001";
     }
     // Allow override via querystring for fast testing
     if (typeof window !== "undefined" && window.location && window.location.search.includes("api=")) {
